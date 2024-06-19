@@ -1,0 +1,136 @@
+﻿@model EventSharing.ViewModels.EventSearchViewModel
+
+@{
+    ViewData["Title"] = "Recherche d'une activité";
+}
+
+<h4>Recherche</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form>
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="SearchTerm" class="control-label"></label>
+                <input id="searchTerm" asp-for="SearchTerm" class="form-control" />
+                <span asp-validation-for="SearchTerm" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="StartDate" class="control-label"></label>
+                <input id="startDate" asp-for="StartDate" class="form-control" />
+                <span asp-validation-for="StartDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label name="Category name" class="control-label"></label>
+                <select id="idCategory" asp-for="IdCategory" class="form-control" />
+                @foreach (var categoryVm in Model.CategoriesVm)
+                {
+                    <option value="@categoryVm.Id"> @categoryVm.Name </option>
+                }
+
+            </div>
+            <div class="form-group">
+                <input type="submit" id="searchButton" value="Recherche" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div id="event-list" class="list-group">
+
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+
+        $(document).ready(function(){
+            $('#searchButton').click(function(){
+                var formData = {
+                    searchTerm: $('#searchTerm').val(),
+                    startDate: $('#startDate').val(),
+                    idCategory: $('#idCategory').val(),
+                };
+                searchEvents(formData);
+                event.preventDefault();
+            });
+        });
+
+        function searchEvents(formData) {
+            $.ajax({
+                url: '@Url.Action("GetSearchResults", "Events")',
+                data: formData,
+                type: 'GET',
+                dataType: 'json',
+                success: function(result){
+                    $('#event-list').empty();
+                    $('#event-list').append('<hr />');
+                    $('#event-list').append('<h1> Résultat </h1>');
+                    $.each(result.eventsVm, function(index, event){
+                        var listItem = '<li class="list-group-item">' +
+                            '<div class="d-flex justify-content-between align-items-center">' +
+                            '<div>' +
+                            '<h4>' + event.name + '</h4>' +
+                            '<p>' + event.description + '</p>' +
+                            '<p> Date de début : ' + event.startDate + '</p>' +
+                            '<p> Date de fin : ' + event.endDate + '</p>' +
+                            '</div>' +
+                            '<div>';
+                            if (event.isCurrentUserRegistred) {
+                                listItem += '<button class="btn btn-danger btn-unregister" data-event-id="'
+                                + event.id + '" data-registered="true">Se désinscrire</button>';
+                        } else {
+                            listItem += '<button class="btn btn-success btn-register" data-event-id="'
+                                + event.id + '" data-registered="false">S\'inscrire</button>';
+                        }
+                        listItem += '</div>' +
+                            '</div>' +
+                            '</li>';
+                        $('#event-list').append(listItem);
+                    });
+
+                    $('.btn-register, .btn-unregister').click(function(){
+                        var button = $(this);
+                        var eventId = button.data("event-id");
+                        var registered = button.data("registered");
+
+                        $.ajax({
+                            url: '@Url.Action("ManageRegistration", "Events")',
+                            data: { eventId: eventId, register: !registered },
+                            type: 'GET',
+                            dataType: 'json',
+                            success: function (result){
+                                if (result.success){
+                                    registered = !registered;
+                                    if (registered)
+                                    {
+                                        button.removeClass('btn-success').addClass('btn-danger').text('Se désinscrire').data('registered', true);
+                                    }
+                                    else {
+                                        button.removeClass('btn-danger').addClass('btn-success').text('S\'inscrire').data('registered', false);
+                                    }
+
+                                }
+                                else {
+                                    alert(result.errorMessage);
+                                }
+                            },
+                            error: function(){
+                                alert('Une erreur s\'est produite.');
+                            }
+                        });
+
+                    });
+                },
+                error: function(){
+                    alert('Une erreur s\est produite lors de la recherche des activités.');
+                }
+            });
+        }
+
+    </script>
+}
